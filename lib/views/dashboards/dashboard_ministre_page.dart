@@ -6,6 +6,7 @@ import 'package:ecclesiaste/views/annonces_page.dart';
 import 'package:ecclesiaste/views/journal_finances_page.dart';
 import 'package:ecclesiaste/views/saisie_finances_page.dart';
 import 'package:ecclesiaste/views/statistiques_page.dart';
+import 'package:ecclesiaste/views/report_list_page.dart';
 import 'package:ecclesiaste/services/entite_scope_service.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 import 'package:ecclesiaste/widgets/dashboard/dashboard_shared.dart';
@@ -153,6 +154,10 @@ class _DashboardMinistrePageState extends State<DashboardMinistrePage> {
                               TextButton(
                                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StatistiquesPage())),
                                 child: const Text('Stats', style: TextStyle(color: Colors.white)),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportListPage())),
+                                child: const Text('Rapports', style: TextStyle(color: Colors.white)),
                               ),
                             ],
                           ),

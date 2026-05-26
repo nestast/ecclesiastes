@@ -11,6 +11,7 @@ import 'package:ecclesiaste/views/calendrier_page.dart';
 import 'package:ecclesiaste/views/gestion_membres_page.dart';
 import 'package:ecclesiaste/views/inscription_membre_page.dart';
 import 'package:ecclesiaste/views/validation_inscription_page.dart';
+import 'package:ecclesiaste/views/report_list_page.dart';
 import 'package:ecclesiaste/widgets/dashboard/dashboard_shared.dart';
 import 'package:ecclesiaste/widgets/dashboard/entite_hierarchy_pills.dart';
 
@@ -179,6 +180,10 @@ class _DashboardResponsableEntitePageState extends State<DashboardResponsableEnt
                           ),
                         ],
                       ),
+                      const SizedBox(height: 20),
+                      _quickAction(Icons.assignment, 'Rapports', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportListPage()));
+                      }),
                       const SizedBox(height: 20),
                     ],
                     if (UserAccessProfile.canSeeCommissionsGrid) ...[

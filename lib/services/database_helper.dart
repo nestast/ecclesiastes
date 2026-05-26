@@ -1,10 +1,11 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:convert';
 import 'package:ecclesiaste/utils/password_utils.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 
 class DatabaseHelper {
-  static const int _dbVersion = 6;
+  static const int _dbVersion = 7;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -112,6 +113,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE rapports (
         id TEXT PRIMARY KEY,
+        group_id TEXT,
         entite_id TEXT,
         commission TEXT NOT NULL,
         date_activite TEXT NOT NULL,
@@ -119,7 +121,42 @@ class DatabaseHelper {
         offrande_fc REAL NOT NULL DEFAULT 0,
         numero_recu TEXT NOT NULL,
         taches_json TEXT,
-        statut INTEGER NOT NULL DEFAULT 0
+        statut INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        remote_id TEXT,
+        version INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE rapport_transmissions (
+        id TEXT PRIMARY KEY,
+        rapport_id TEXT NOT NULL,
+        dest_entite_id TEXT NOT NULL,
+        dest_commission TEXT,
+        statut INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT,
+        sent_at TEXT,
+        received_at TEXT,
+        remote_id TEXT,
+        version INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE rapport_history (
+        id TEXT PRIMARY KEY,
+        rapport_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        actor_id TEXT,
+        from_entite_id TEXT,
+        to_entite_id TEXT,
+        data_json TEXT,
+        created_at TEXT,
+        remote_id TEXT,
+        version INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -313,6 +350,7 @@ class DatabaseHelper {
         await db.execute('''
           CREATE TABLE IF NOT EXISTS rapports (
             id TEXT PRIMARY KEY,
+            group_id TEXT,
             entite_id TEXT,
             commission TEXT NOT NULL,
             date_activite TEXT NOT NULL,
@@ -320,7 +358,58 @@ class DatabaseHelper {
             offrande_fc REAL NOT NULL DEFAULT 0,
             numero_recu TEXT NOT NULL,
             taches_json TEXT,
-            statut INTEGER NOT NULL DEFAULT 0
+            statut INTEGER NOT NULL DEFAULT 0,
+            created_by TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            remote_id TEXT,
+            version INTEGER NOT NULL DEFAULT 1
+          )
+        ''');
+      } catch (_) {}
+    }
+    if (oldVersion < 7) {
+      for (final col in [
+        "ALTER TABLE rapports ADD COLUMN group_id TEXT",
+        "ALTER TABLE rapports ADD COLUMN created_by TEXT",
+        "ALTER TABLE rapports ADD COLUMN created_at TEXT",
+        "ALTER TABLE rapports ADD COLUMN updated_at TEXT",
+        "ALTER TABLE rapports ADD COLUMN remote_id TEXT",
+        "ALTER TABLE rapports ADD COLUMN version INTEGER NOT NULL DEFAULT 1",
+      ]) {
+        try {
+          await db.execute(col);
+        } catch (_) {}
+      }
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS rapport_transmissions (
+            id TEXT PRIMARY KEY,
+            rapport_id TEXT NOT NULL,
+            dest_entite_id TEXT NOT NULL,
+            dest_commission TEXT,
+            statut INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT,
+            sent_at TEXT,
+            received_at TEXT,
+            remote_id TEXT,
+            version INTEGER NOT NULL DEFAULT 1
+          )
+        ''');
+      } catch (_) {}
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS rapport_history (
+            id TEXT PRIMARY KEY,
+            rapport_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            actor_id TEXT,
+            from_entite_id TEXT,
+            to_entite_id TEXT,
+            data_json TEXT,
+            created_at TEXT,
+            remote_id TEXT,
+            version INTEGER NOT NULL DEFAULT 1
           )
         ''');
       } catch (_) {}
@@ -1025,5 +1114,154 @@ class DatabaseHelper {
   Future<int> deleteDocument(int id) async {
     final db = await database;
     return db.delete('bibliotheque', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> insertRapport(Map<String, dynamic> row) async {
+    final db = await database;
+    final data = Map<String, dynamic>.from(row);
+    data.putIfAbsent('id', () => DateTime.now().millisecondsSinceEpoch.toString());
+    data.putIfAbsent('group_id', () => data['id']);
+    data.putIfAbsent('created_at', () => DateTime.now().toIso8601String());
+    data.putIfAbsent('updated_at', () => DateTime.now().toIso8601String());
+    data.putIfAbsent('version', () => 1);
+    return db.insert('rapports', data);
+  }
+
+  Future<List<Map<String, dynamic>>> getRapportsEmis({
+    String? entiteId,
+    String? commission,
+  }) async {
+    final db = await database;
+    String where = '1=1';
+    final args = <dynamic>[];
+    if (entiteId != null && entiteId.isNotEmpty) {
+      where += ' AND entite_id = ?';
+      args.add(entiteId);
+    }
+    if (commission != null && commission.isNotEmpty) {
+      where += ' AND commission = ?';
+      args.add(commission);
+    }
+    return db.query('rapports', where: where, whereArgs: args, orderBy: 'date_activite DESC');
+  }
+
+  Future<List<Map<String, dynamic>>> getRapportsRecus({
+    required String destEntiteId,
+    String? destCommission,
+  }) async {
+    final db = await database;
+    final where = destCommission == null || destCommission.isEmpty
+        ? 't.dest_entite_id = ?'
+        : 't.dest_entite_id = ? AND (t.dest_commission = ? OR t.dest_commission IS NULL OR t.dest_commission = \'\')';
+    final args = destCommission == null || destCommission.isEmpty
+        ? [destEntiteId]
+        : [destEntiteId, destCommission];
+    return db.rawQuery('''
+      SELECT r.*,
+             t.id AS transmission_id,
+             t.dest_entite_id AS dest_entite_id,
+             t.dest_commission AS dest_commission,
+             t.statut AS transmission_statut,
+             t.sent_at AS sent_at,
+             t.received_at AS received_at
+      FROM rapport_transmissions t
+      JOIN rapports r ON r.id = t.rapport_id
+      WHERE $where
+      ORDER BY t.sent_at DESC, r.date_activite DESC
+    ''', args);
+  }
+
+  Future<String?> getParentEntiteId(String entiteId) async {
+    final ent = await getEntiteById(entiteId);
+    return ent?['parent_id']?.toString();
+  }
+
+  Future<void> transmettreRapport({
+    required String rapportId,
+    required String actorId,
+  }) async {
+    final db = await database;
+    final rows = await db.query('rapports', where: 'id = ?', whereArgs: [rapportId], limit: 1);
+    if (rows.isEmpty) return;
+    final r = rows.first;
+    final fromEntiteId = r['entite_id']?.toString() ?? '';
+    if (fromEntiteId.isEmpty) return;
+    await transmettreRapportDepuis(
+      rapportId: rapportId,
+      fromEntiteId: fromEntiteId,
+      actorId: actorId,
+    );
+  }
+
+  Future<void> transmettreRapportDepuis({
+    required String rapportId,
+    required String fromEntiteId,
+    required String actorId,
+  }) async {
+    final db = await database;
+    final rows = await db.query('rapports', where: 'id = ?', whereArgs: [rapportId], limit: 1);
+    if (rows.isEmpty) return;
+    final r = rows.first;
+    final commission = r['commission']?.toString() ?? '';
+    if (commission.isEmpty) return;
+
+    final parentId = await getParentEntiteId(fromEntiteId);
+    if (parentId == null || parentId.isEmpty) return;
+
+    final now = DateTime.now().toIso8601String();
+    final transmissions = [
+      {
+        'id': 'TX_${DateTime.now().microsecondsSinceEpoch}_E',
+        'rapport_id': rapportId,
+        'dest_entite_id': parentId,
+        'dest_commission': null,
+        'statut': 1,
+        'created_at': now,
+        'sent_at': now,
+        'version': 1,
+      },
+      {
+        'id': 'TX_${DateTime.now().microsecondsSinceEpoch}_C',
+        'rapport_id': rapportId,
+        'dest_entite_id': parentId,
+        'dest_commission': commission,
+        'statut': 1,
+        'created_at': now,
+        'sent_at': now,
+        'version': 1,
+      },
+    ];
+    for (final t in transmissions) {
+      await db.insert('rapport_transmissions', t, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+
+    await db.insert('rapport_history', {
+      'id': 'H_${DateTime.now().microsecondsSinceEpoch}',
+      'rapport_id': rapportId,
+      'action': 'TRANSMIS',
+      'actor_id': actorId,
+      'from_entite_id': fromEntiteId,
+      'to_entite_id': parentId,
+      'data_json': jsonEncode({
+        'destinations': [
+          {'dest_entite_id': parentId, 'dest_commission': null},
+          {'dest_entite_id': parentId, 'dest_commission': commission},
+        ]
+      }),
+      'created_at': now,
+      'version': 1,
+    });
+
+    final currentStatut = int.tryParse(r['statut']?.toString() ?? '') ?? 0;
+    await db.update(
+      'rapports',
+      {
+        'statut': currentStatut < 2 ? 2 : currentStatut,
+        'updated_at': now,
+        'version': (r['version'] as int? ?? 1) + 1,
+      },
+      where: 'id = ?',
+      whereArgs: [rapportId],
+    );
   }
 }

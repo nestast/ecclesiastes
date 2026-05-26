@@ -5,6 +5,7 @@ import 'package:ecclesiaste/utils/constants.dart';
 import 'package:ecclesiaste/utils/dashboard_theme.dart';
 import 'package:ecclesiaste/views/calendrier_page.dart';
 import 'package:ecclesiaste/views/gestion_membres_page.dart';
+import 'package:ecclesiaste/views/report_list_page.dart';
 import 'package:ecclesiaste/widgets/dashboard/dashboard_shared.dart';
 
 class DashboardCommissionPage extends StatefulWidget {
@@ -124,9 +125,7 @@ class _DashboardCommissionPageState extends State<DashboardCommissionPage> {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendrierPage()));
                     }),
                     _action(Icons.assignment, 'Rapport d\'activité', () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Rapport commission — à compléter')),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportListPage()));
                     }),
                   ],
                 ),

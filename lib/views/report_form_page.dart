@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecclesiaste/services/database_helper.dart';
+import 'package:ecclesiaste/services/auth_service.dart';
 import 'package:ecclesiaste/utils/constants.dart';
 import 'package:ecclesiaste/utils/task_constants.dart';
 import 'dart:convert';
@@ -23,21 +24,20 @@ class _ReportFormPageState extends State<ReportFormPage> {
 
   void _saveReport() async {
     if (_formKey.currentState!.validate()) {
-      final db = await DatabaseHelper.instance.database;
-      await db.insert('rapports', {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'entite_id': 'COM_01', // À lier à la communauté sélectionnée
+      await DatabaseHelper.instance.insertRapport({
+        'entite_id': AuthService.currentEntiteId,
         'commission': _selectedCommission,
         'date_activite': DateTime.now().toIso8601String(),
         'offrande_usd': double.tryParse(_usdController.text) ?? 0.0,
         'offrande_fc': double.tryParse(_fcController.text) ?? 0.0,
         'numero_recu': _receiptController.text,
-        'taches_json': jsonEncode(_taskResponses), // Sauvegarde des tâches en JSON
+        'taches_json': jsonEncode(_taskResponses),
         'statut': 1,
+        'created_by': AuthService.currentUser?['id'],
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Rapport transmis au Prêtre !")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Rapport enregistré.")));
         Navigator.pop(context);
       }
     }

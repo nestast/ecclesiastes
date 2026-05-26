@@ -4,6 +4,8 @@ import 'package:ecclesiaste/views/dashboard_page.dart';
 import 'package:ecclesiaste/services/auth_service.dart';
 import 'package:ecclesiaste/services/database_helper.dart';
 import 'package:ecclesiaste/services/notification_service.dart';
+import 'package:ecclesiaste/services/firebase_service.dart';
+import 'package:ecclesiaste/services/cloud_sync_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
@@ -12,6 +14,11 @@ void main() async {
   await initializeDateFormatting('fr_FR', null);
   await DatabaseHelper.instance.database;
   await NotificationService.init();
+  try {
+    await FirebaseService.init();
+    await CloudSyncService.pullAll();
+    await CloudSyncService.pushAll();
+  } catch (_) {}
 
   runApp(const EgliseApp());
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ecclesiaste/services/database_helper.dart';
-import 'package:ecclesiaste/services/pdf_service.dart'; // Import du service PDF
+import 'package:ecclesiaste/services/auth_service.dart';
+import 'package:ecclesiaste/services/pdf_service.dart';
+import 'package:ecclesiaste/utils/user_access.dart';
+import 'package:ecclesiaste/views/report_form_page.dart';
 
 class ReportListPage extends StatefulWidget {
   const ReportListPage({super.key});
@@ -10,141 +13,180 @@ class ReportListPage extends StatefulWidget {
 }
 
 class _ReportListPageState extends State<ReportListPage> {
-  List<Map<String, dynamic>> _reports = [];
+  List<Map<String, dynamic>> _inbox = [];
+  List<Map<String, dynamic>> _outbox = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadReports();
+    _load();
   }
 
-  // Chargement des données depuis SQFlite
-  Future<void> _loadReports() async {
+  Future<void> _load() async {
     setState(() => _isLoading = true);
-    final db = await DatabaseHelper.instance.database;
-    final data = await db.query('rapports', orderBy: 'date_activite DESC');
+    final entiteId = AuthService.currentEntiteId;
+    final ministere = AuthService.currentUser?['ministere']?.toString();
+    final inbox = entiteId.isEmpty
+        ? <Map<String, dynamic>>[]
+        : await DatabaseHelper.instance.getRapportsRecus(
+            destEntiteId: entiteId,
+            destCommission: UserAccessProfile.current == UserAccessProfile.responsableCommission ? ministere : null,
+          );
+    final outbox = await DatabaseHelper.instance.getRapportsEmis(
+      entiteId: entiteId.isNotEmpty ? entiteId : null,
+      commission: ministere,
+    );
+    if (!mounted) return;
     setState(() {
-      _reports = data;
+      _inbox = inbox;
+      _outbox = outbox;
       _isLoading = false;
     });
   }
 
-  // Action de validation (Statut 1 -> 3)
-  Future<void> _validateReport(String id) async {
-    final db = await DatabaseHelper.instance.database;
-    await db.update(
-      'rapports', 
-      {'statut': 3}, 
-      where: 'id = ?', 
-      whereArgs: [id]
+  Future<void> _transmettreOutbox(String id) async {
+    final actorId = AuthService.currentUser?['id']?.toString() ?? '';
+    if (actorId.isEmpty) return;
+    await DatabaseHelper.instance.transmettreRapport(rapportId: id, actorId: actorId);
+    await _load();
+  }
+
+  Future<void> _transmettreInbox(String id) async {
+    final actorId = AuthService.currentUser?['id']?.toString() ?? '';
+    final fromEntiteId = AuthService.currentEntiteId;
+    if (actorId.isEmpty || fromEntiteId.isEmpty) return;
+    await DatabaseHelper.instance.transmettreRapportDepuis(
+      rapportId: id,
+      fromEntiteId: fromEntiteId,
+      actorId: actorId,
     );
-    _loadReports(); // Rafraîchir la liste
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Rapport validé avec succès !")),
-      );
+    await _load();
+  }
+
+  String _statutLabel(dynamic s) {
+    final v = int.tryParse(s?.toString() ?? '') ?? 0;
+    switch (v) {
+      case 1:
+        return 'Soumis';
+      case 2:
+        return 'Transmis';
+      case 3:
+        return 'Validé';
+      default:
+        return 'Brouillon';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Grand Livre des Rapports"),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadReports,
-          )
-        ],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Rapports"),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Reçus'),
+              Tab(text: 'Émis'),
+            ],
+          ),
+          actions: [
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  _inbox.isEmpty
+                      ? _buildEmptyState('Aucun rapport reçu.')
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _inbox.length,
+                          itemBuilder: (context, index) => _buildInboxTile(_inbox[index]),
+                        ),
+                  _outbox.isEmpty
+                      ? _buildEmptyState('Aucun rapport émis.')
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _outbox.length,
+                          itemBuilder: (context, index) => _buildOutboxTile(_outbox[index]),
+                        ),
+                ],
+              ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportFormPage()));
+            if (mounted) _load();
+          },
+          child: const Icon(Icons.add),
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _reports.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: _reports.length,
-                  itemBuilder: (context, index) {
-                    final r = _reports[index];
-                    final bool isValidated = r['statut'] == 3;
-
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: CircleAvatar(
-                          backgroundColor: isValidated ? Colors.green.shade100 : Colors.amber.shade100,
-                          child: Icon(
-                            isValidated ? Icons.check_circle : Icons.pending_actions,
-                            color: isValidated ? Colors.green : Colors.amber.shade900,
-                          ),
-                        ),
-                        title: Text(
-                          "${r['commission']} - ${r['numero_recu']}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text("Montant : ${r['offrande_usd']} USD"),
-                            Text(
-                              "Date : ${r['date_activite'].toString().substring(0, 10)}",
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        trailing: Wrap(
-                          spacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            // Bouton PDF (Visible seulement si validé)
-                            if (isValidated)
-                              IconButton(
-                                icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                                tooltip: "Générer PDF",
-                                onPressed: () => PdfService.generateReportPdf(r),
-                              ),
-                            
-                            // Bouton de Validation ou Badge
-                            isValidated
-                                ? const Icon(Icons.verified, color: Colors.blue)
-                                : ElevatedButton(
-                                    onPressed: () => _validateReport(r['id']),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    ),
-                                    child: const Text("Valider"),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildInboxTile(Map<String, dynamic> r) {
+    final statut = int.tryParse(r['statut']?.toString() ?? '') ?? 0;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: ListTile(
+        title: Text("${r['commission']} - ${r['numero_recu']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text("${_statutLabel(statut)} • ${r['date_activite']?.toString().substring(0, 10) ?? ''}"),
+        trailing: Wrap(
+          spacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (statut >= 2)
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                onPressed: () => PdfService.generateReportPdf(r),
+              ),
+            ElevatedButton(
+              onPressed: () => _transmettreInbox(r['id']?.toString() ?? ''),
+              child: const Text('Transmettre'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutboxTile(Map<String, dynamic> r) {
+    final statut = int.tryParse(r['statut']?.toString() ?? '') ?? 0;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: ListTile(
+        title: Text("${r['commission']} - ${r['numero_recu']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text("${_statutLabel(statut)} • ${r['date_activite']?.toString().substring(0, 10) ?? ''}"),
+        trailing: Wrap(
+          spacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (statut >= 2)
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                onPressed: () => PdfService.generateReportPdf(r),
+              ),
+            if (statut == 1)
+              ElevatedButton(
+                onPressed: () => _transmettreOutbox(r['id']?.toString() ?? ''),
+                child: const Text('Transmettre'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String text) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.inbox, size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text(
-            "Aucun rapport trouvé dans la base locale.",
-            style: TextStyle(color: Colors.grey),
-          ),
+          Text(text, style: const TextStyle(color: Colors.grey)),
         ],
       ),
     );
