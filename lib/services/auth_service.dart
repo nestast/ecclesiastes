@@ -64,6 +64,7 @@ class AuthService {
 
     currentUser = {
       'id': user['id'],
+      'identifiant': user['identifiant'],
       'nom_complet': user['nom_complet'],
       'role': role,
       'entite_id': communauteId,

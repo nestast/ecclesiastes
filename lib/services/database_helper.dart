@@ -5,7 +5,7 @@ import 'package:ecclesiaste/utils/password_utils.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 
 class DatabaseHelper {
-  static const int _dbVersion = 7;
+  static const int _dbVersion = 8;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -116,6 +116,9 @@ class DatabaseHelper {
         group_id TEXT,
         entite_id TEXT,
         commission TEXT NOT NULL,
+        type_rapport TEXT NOT NULL DEFAULT 'ACTIVITE',
+        titre TEXT,
+        payload_json TEXT,
         date_activite TEXT NOT NULL,
         offrande_usd REAL NOT NULL DEFAULT 0,
         offrande_fc REAL NOT NULL DEFAULT 0,
@@ -353,6 +356,9 @@ class DatabaseHelper {
             group_id TEXT,
             entite_id TEXT,
             commission TEXT NOT NULL,
+            type_rapport TEXT NOT NULL DEFAULT 'ACTIVITE',
+            titre TEXT,
+            payload_json TEXT,
             date_activite TEXT NOT NULL,
             offrande_usd REAL NOT NULL DEFAULT 0,
             offrande_fc REAL NOT NULL DEFAULT 0,
@@ -413,6 +419,17 @@ class DatabaseHelper {
           )
         ''');
       } catch (_) {}
+    }
+    if (oldVersion < 8) {
+      for (final col in [
+        "ALTER TABLE rapports ADD COLUMN type_rapport TEXT NOT NULL DEFAULT 'ACTIVITE'",
+        "ALTER TABLE rapports ADD COLUMN titre TEXT",
+        "ALTER TABLE rapports ADD COLUMN payload_json TEXT",
+      ]) {
+        try {
+          await db.execute(col);
+        } catch (_) {}
+      }
     }
   }
 
@@ -797,11 +814,13 @@ class DatabaseHelper {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getCommunautesAvecChemin() async {
+  Future<List<Map<String, dynamic>>> getEntitesAvecChemin({List<String>? types}) async {
     final db = await database;
     final all = await db.query('entites');
     final byId = {for (final e in all) e['id'].toString(): e};
-    final comms = all.where((e) => EntiteTypes.normalize(e['type']?.toString()) == EntiteTypes.communaute);
+    final allowed = types == null
+        ? null
+        : types.map((t) => EntiteTypes.normalize(t)).toSet();
 
     String chemin(String id) {
       final parts = <String>[];
@@ -814,14 +833,30 @@ class DatabaseHelper {
       return parts.join(' › ');
     }
 
-    return comms
-        .map((c) => {
-              'id': c['id'].toString(),
-              'nom': c['nom']?.toString() ?? '',
-              'chemin': chemin(c['id'].toString()),
+    final filtered = allowed == null
+        ? all
+        : all.where((e) => allowed.contains(EntiteTypes.normalize(e['type']?.toString())));
+
+    return filtered
+        .map((e) => {
+              'id': e['id'].toString(),
+              'nom': e['nom']?.toString() ?? '',
+              'type': EntiteTypes.normalize(e['type']?.toString()),
+              'chemin': chemin(e['id'].toString()),
             })
         .toList()
       ..sort((a, b) => (a['chemin'] as String).compareTo(b['chemin'] as String));
+  }
+
+  Future<List<Map<String, dynamic>>> getCommunautesAvecChemin() async {
+    final rows = await getEntitesAvecChemin(types: [EntiteTypes.communaute]);
+    return rows
+        .map((e) => {
+              'id': e['id'],
+              'nom': e['nom'],
+              'chemin': e['chemin'],
+            })
+        .toList();
   }
 
   // --- MEMBRES ---

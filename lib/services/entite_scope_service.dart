@@ -36,24 +36,35 @@ class EntiteScopeService {
 
   /// Initialise le scope depuis la communauté de session (login).
   static Future<void> initFromSession() async {
-    final sessionComm = AuthService.currentEntiteId;
-    if (sessionComm.isEmpty) {
+    final sessionEntite = AuthService.currentEntiteId;
+    if (sessionEntite.isEmpty) {
       await initDefaultForAdmin();
       return;
     }
-    await initFromCommunaute(sessionComm);
+    await initFromEntite(sessionEntite);
   }
 
-  static Future<void> initFromCommunaute(String communauteIdParam) async {
-    final chain = await DatabaseHelper.instance.getChaineAncestres(communauteIdParam);
+  static Future<void> initFromEntite(String entiteId) async {
+    final chain = await DatabaseHelper.instance.getChaineAncestres(entiteId);
+    if (chain.isEmpty) return;
+
+    final currentType = EntiteTypes.normalize(chain.last['type']?.toString());
     String? champ;
     String? district;
+    String? communaute;
+
     for (final e in chain) {
       final t = EntiteTypes.normalize(e['type']?.toString());
       if (t == EntiteTypes.champApostolique) champ = e['id']?.toString();
       if (t == EntiteTypes.district) district = e['id']?.toString();
     }
-    setScope(champ: champ, district: district, communaute: communauteIdParam);
+
+    if (currentType == EntiteTypes.communaute) communaute = entiteId;
+    setScope(champ: champ, district: district, communaute: communaute);
+  }
+
+  static Future<void> initFromCommunaute(String communauteIdParam) async {
+    await initFromEntite(communauteIdParam);
   }
 
   /// Super-admin / ministre : premier champ + premier district + première communauté.

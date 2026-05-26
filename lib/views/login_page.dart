@@ -3,6 +3,7 @@ import 'package:ecclesiaste/services/auth_service.dart';
 import 'package:ecclesiaste/services/database_helper.dart';
 import 'package:ecclesiaste/services/entite_scope_service.dart';
 import 'package:ecclesiaste/utils/constants.dart';
+import 'package:ecclesiaste/utils/entite_types.dart';
 import 'package:ecclesiaste/utils/security_policy.dart';
 import 'package:ecclesiaste/views/dashboard_page.dart';
 import 'package:ecclesiaste/views/forgot_password_page.dart';
@@ -22,8 +23,8 @@ class _LoginPageState extends State<LoginPage> {
   final _identifiantController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  List<Map<String, dynamic>> _communautes = [];
-  String? _communauteId;
+  List<Map<String, dynamic>> _entites = [];
+  String? _entiteId;
   String? _ministere;
   String? _role;
   bool _accepteConditions = false;
@@ -33,20 +34,48 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _chargerCommunautes();
+    _chargerEntites();
   }
 
-  Future<void> _chargerCommunautes() async {
+  Future<void> _chargerEntites() async {
     try {
-      final data = await DatabaseHelper.instance.getCommunautesAvecChemin();
-      if (mounted) setState(() => _communautes = data);
+      final data = await DatabaseHelper.instance.getEntitesAvecChemin();
+      if (mounted) setState(() => _entites = data);
     } catch (e) {
-      debugPrint('Erreur chargement communautés : $e');
+      debugPrint('Erreur chargement entités : $e');
     }
   }
 
+  List<String> _allowedTypesForRole(String? role) {
+    switch (role) {
+      case 'Responsable de district':
+        return [EntiteTypes.district];
+      case 'Ministre':
+      case 'Apôtre':
+        return [
+          EntiteTypes.egliseTerritoriale,
+          EntiteTypes.champApostolique,
+          EntiteTypes.district,
+          EntiteTypes.communaute,
+        ];
+      case 'Responsable de communauté':
+      case 'Responsable de commission':
+      case 'Secrétaire':
+      case 'Trésorier':
+      case 'Diacre':
+      case 'Membre':
+      default:
+        return [EntiteTypes.communaute];
+    }
+  }
+
+  List<Map<String, dynamic>> get _entitesFiltrees {
+    final allowed = _allowedTypesForRole(_role).toSet();
+    return _entites.where((e) => allowed.contains(e['type']?.toString())).toList();
+  }
+
   Future<void> _handleLogin() async {
-    if (_communauteId == null || _ministere == null || _role == null) {
+    if (_entiteId == null || _ministere == null || _role == null) {
       _snack('Sélectionnez le niveau, le ministère et le rôle.');
       return;
     }
@@ -64,21 +93,21 @@ class _LoginPageState extends State<LoginPage> {
       final success = await AuthService.login(
         identifiant: _identifiantController.text.trim(),
         password: _passwordController.text.trim(),
-        communauteId: _communauteId!,
+        communauteId: _entiteId!,
         ministere: _ministere,
         roleLabel: _role,
       );
 
       if (!mounted) return;
       if (success) {
-        await EntiteScopeService.initFromCommunaute(_communauteId!);
+        await EntiteScopeService.initFromEntite(_entiteId!);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const DashboardPage()),
         );
       } else {
-        _snack('Identifiant, mot de passe ou communauté incorrect.');
+        _snack('Identifiant, mot de passe ou niveau incorrect.');
       }
     } catch (e) {
       _snack(e.toString().replaceAll('Exception: ', ''));
@@ -167,15 +196,15 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'connectez-vous à votre communauté',
+                'connectez-vous à votre entité',
                 style: TextStyle(fontSize: 16, color: Colors.black87),
               ),
               const SizedBox(height: 36),
               _LoginDropdown(
                 label: 'Niveau',
-                hint: 'Communauté (église › champ › district)',
-                value: _communauteId,
-                items: _communautes
+                hint: 'Sélectionnez votre entité',
+                value: _entiteId,
+                items: _entitesFiltrees
                     .map((c) => DropdownMenuItem<String>(
                           value: c['id'] as String,
                           child: Text(
@@ -185,7 +214,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ))
                     .toList(),
-                onChanged: (v) => setState(() => _communauteId = v),
+                onChanged: (v) => setState(() => _entiteId = v),
               ),
               const SizedBox(height: 20),
               _LoginDropdown(
@@ -203,7 +232,17 @@ class _LoginPageState extends State<LoginPage> {
                 items: AppConstants.rolesConnexion
                     .map((r) => DropdownMenuItem<String>(value: r, child: Text(r)))
                     .toList(),
-                onChanged: (v) => setState(() => _role = v),
+                onChanged: (v) => setState(() {
+                  _role = v;
+                  final allowed = _allowedTypesForRole(_role).toSet();
+                  final current = _entites.firstWhere(
+                    (e) => e['id'] == _entiteId,
+                    orElse: () => {},
+                  );
+                  if (current.isNotEmpty && !allowed.contains(current['type']?.toString())) {
+                    _entiteId = null;
+                  }
+                }),
               ),
               const SizedBox(height: 20),
               TextField(
