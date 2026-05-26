@@ -4,7 +4,7 @@ import 'package:ecclesiaste/utils/password_utils.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 
 class DatabaseHelper {
-  static const int _dbVersion = 5;
+  static const int _dbVersion = 6;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -103,7 +103,23 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         titre TEXT NOT NULL,
         contenu TEXT NOT NULL,
-        date_publication TEXT NOT NULL
+        date_publication TEXT NOT NULL,
+        type_annonce TEXT NOT NULL DEFAULT 'COMMUNIQUE',
+        auteur TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE rapports (
+        id TEXT PRIMARY KEY,
+        entite_id TEXT,
+        commission TEXT NOT NULL,
+        date_activite TEXT NOT NULL,
+        offrande_usd REAL NOT NULL DEFAULT 0,
+        offrande_fc REAL NOT NULL DEFAULT 0,
+        numero_recu TEXT NOT NULL,
+        taches_json TEXT,
+        statut INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -272,6 +288,43 @@ class DatabaseHelper {
         ''');
       } catch (_) {}
     }
+    if (oldVersion < 6) {
+      for (final col in [
+        "ALTER TABLE annonces ADD COLUMN type_annonce TEXT NOT NULL DEFAULT 'COMMUNIQUE'",
+        "ALTER TABLE annonces ADD COLUMN auteur TEXT",
+      ]) {
+        try {
+          await db.execute(col);
+        } catch (_) {}
+      }
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS annonces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titre TEXT NOT NULL,
+            contenu TEXT NOT NULL,
+            date_publication TEXT NOT NULL,
+            type_annonce TEXT NOT NULL DEFAULT 'COMMUNIQUE',
+            auteur TEXT
+          )
+        ''');
+      } catch (_) {}
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS rapports (
+            id TEXT PRIMARY KEY,
+            entite_id TEXT,
+            commission TEXT NOT NULL,
+            date_activite TEXT NOT NULL,
+            offrande_usd REAL NOT NULL DEFAULT 0,
+            offrande_fc REAL NOT NULL DEFAULT 0,
+            numero_recu TEXT NOT NULL,
+            taches_json TEXT,
+            statut INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
+      } catch (_) {}
+    }
   }
 
   Future<void> _normalizeEntiteTypeCodes(Database db) async {
@@ -409,7 +462,7 @@ class DatabaseHelper {
     await db.insert('utilisateurs', {
       'id': 'USR_ADMIN',
       'identifiant': 'admin',
-      'mot_de_passe_hash': hashPassword('1234'),
+      'mot_de_passe_hash': hashPassword('Admin@1234'),
       'nom_complet': 'Nestor Mbuyi Kankolongo',
       'role': 'SUPER_ADMIN',
       'entite_id': null,
