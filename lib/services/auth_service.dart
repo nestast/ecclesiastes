@@ -1,5 +1,6 @@
 import 'package:ecclesiaste/services/database_helper.dart';
 import 'package:ecclesiaste/services/entite_scope_service.dart';
+import 'package:ecclesiaste/services/logging_service.dart';
 import 'package:ecclesiaste/utils/password_utils.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 
@@ -13,9 +14,18 @@ class AuthService {
     String? ministere,
     String? roleLabel,
   }) async {
+    LoggingService.logAuth('login', userId: identifiant, message: 'Starting authentication');
+
     final user = await DatabaseHelper.instance.getUtilisateurByIdentifiant(identifiant);
-    if (user == null) return false;
-    if (!verifyPassword(password, user['mot_de_passe_hash'] as String)) return false;
+    if (user == null) {
+      LoggingService.warning('login', 'User not found: $identifiant');
+      return false;
+    }
+
+    if (!verifyPassword(password, user['mot_de_passe_hash'] as String)) {
+      LoggingService.warning('login', 'Invalid password for user: $identifiant');
+      return false;
+    }
 
     final role = user['role'] as String;
 
@@ -38,8 +48,8 @@ class AuthService {
       }
 
       // Check validation status and 3-day deadline
-      final int status = user['statut_validation'] != null 
-          ? int.tryParse(user['statut_validation'].toString()) ?? 0 
+      final int status = user['statut_validation'] != null
+          ? int.tryParse(user['statut_validation'].toString()) ?? 0
           : 0;
 
       final dateInscStr = user['date_inscription']?.toString();
@@ -72,7 +82,10 @@ class AuthService {
           : (user['type_entite'] ?? EntiteTypes.communaute),
       if (ministere != null) 'ministere': ministere,
       if (roleLabel != null) 'role_label': roleLabel,
+      'identifiant': identifiant,
     };
+
+    LoggingService.logAuth('login', userId: identifiant, message: 'Login successful for role: $role');
     return true;
   }
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecclesiaste/views/login_page.dart';
 import 'package:ecclesiaste/views/dashboard_page.dart';
 import 'package:ecclesiaste/services/auth_service.dart';
 import 'package:ecclesiaste/services/database_helper.dart';
 import 'package:ecclesiaste/services/notification_service.dart';
+import 'package:ecclesiaste/services/logging_service.dart';
+import 'package:ecclesiaste/utils/secure_storage_helper.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
@@ -13,7 +16,17 @@ void main() async {
   await DatabaseHelper.instance.database;
   await NotificationService.init();
 
-  runApp(const EgliseApp());
+  final hasSession = await SecureStorageHelper.hasSession();
+  if (hasSession) {
+    final sessionData = await SecureStorageHelper.getSession();
+    if (sessionData != null) {
+      AuthService.currentUser = sessionData;
+      LoggingService.logAuth('main', userId: sessionData['user_id'], message: 'Session restored on app startup');
+    }
+  }
+
+  LoggingService.info('App started successfully');
+  runApp(const ProviderScope(child: EgliseApp()));
 }
 
 class EgliseApp extends StatelessWidget {
@@ -24,7 +37,7 @@ class EgliseApp extends StatelessWidget {
     return MaterialApp(
       title: 'eglise',
       debugShowCheckedModeBanner: false,
-      
+
       // Configuration du thème global de l'application
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -45,8 +58,8 @@ class EgliseApp extends StatelessWidget {
       // Logique de démarrage :
       // Si une session utilisateur existe dans AuthService, on va au Dashboard.
       // Sinon, on affiche la page de connexion.
-      home: AuthService.currentUser != null 
-          ? const DashboardPage() 
+      home: AuthService.currentUser != null
+          ? const DashboardPage()
           : const LoginPage(),
 
       // Définition des routes nommées pour faciliter la navigation
