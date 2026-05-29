@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../auth_provider.dart';
 import '../event_provider.dart';
 import '../models/models.dart';
-import 'widgets/dashboard_card.dart';
-import 'widgets/event_list_item.dart';
+import '../widgets/dashboard_card.dart';
+import '../widgets/event_list_item.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE67E22).withOpacity(0.1),
+                  color: const Color(0xFFE67E22).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
