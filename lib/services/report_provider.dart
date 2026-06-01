@@ -83,6 +83,10 @@ class ReportProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reloadReports() async {
+    await _loadAllReports();
+  }
+
   Future<void> selectReport(String reportId) async {
     try {
       _selectedReport = await _reportService.getReport(reportId);

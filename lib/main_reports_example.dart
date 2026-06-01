@@ -2,8 +2,6 @@
 // This is a reference implementation - adapt as needed for your app
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'services/report_provider.dart';
 import 'views/report_list_screen.dart';
 import 'views/create_report_screen.dart';
 

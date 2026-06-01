@@ -25,7 +25,7 @@ class _CreateReportScreenState extends State<CreateReportScreen>
   dynamic _currentReport;
   late TabController _tabController;
   final List<AudioSegment> _recordedAudios = [];
-  String _authorName = 'Admin';
+  final String _authorName = 'Admin';
 
   @override
   void initState() {

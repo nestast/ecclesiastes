@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AudioRecorderWidget extends StatefulWidget {
-  final Function(String)? onRecordingComplete;
+  final String? section;
+  final Function(String, Duration)? onRecordingComplete;
+  final VoidCallback? onRecordingStart;
 
   const AudioRecorderWidget({
+    this.section,
     this.onRecordingComplete,
+    this.onRecordingStart,
     Key? key,
   }) : super(key: key);
 

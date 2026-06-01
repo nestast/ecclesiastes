@@ -178,27 +178,27 @@ class _ReportListScreenState extends State<ReportListScreen> {
   }
 
   Widget _buildReportsList() {
-    return ValueListenableBuilder<ReportProvider>(
-      valueListenable: _reportProvider,
-      builder: (context, provider, _) {
-        if (provider.isLoading) {
+    return AnimatedBuilder(
+      animation: _reportProvider,
+      builder: (context, _) {
+        if (_reportProvider.isLoading) {
           return const Center(
             child: CircularProgressIndicator(),
           );
         }
 
-        if (provider.error != null) {
+        if (_reportProvider.error != null) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
-                Text(provider.error!),
+                Text(_reportProvider.error!),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () {
-                    provider.reloadReports();
+                    _reportProvider.reloadReports();
                   },
                   icon: const Icon(Icons.refresh),
                   label: const Text('Réessayer'),
@@ -208,7 +208,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
           );
         }
 
-        if (provider.filteredReports.isEmpty) {
+        if (_reportProvider.filteredReports.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -222,9 +222,9 @@ class _ReportListScreenState extends State<ReportListScreen> {
         }
 
         return ListView.builder(
-          itemCount: provider.filteredReports.length,
+          itemCount: _reportProvider.filteredReports.length,
           itemBuilder: (context, index) {
-            final report = provider.filteredReports[index];
+            final report = _reportProvider.filteredReports[index];
             return _buildReportCard(report);
           },
         );
