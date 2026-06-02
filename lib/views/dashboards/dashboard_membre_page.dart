@@ -79,13 +79,14 @@ class _DashboardMembrePageState extends State<DashboardMembrePage> {
                   _tile(Icons.calendar_month, 'Calendrier & programmes', const CalendrierPage()),
                   _tile(Icons.campaign, 'Annonces & communiqués', const AnnoncesPage()),
                   _tile(Icons.menu_book, 'Bibliothèque spirituelle', const BibliothequePage()),
+                  _tile(Icons.assessment, 'Mes rapports d\'activité', null, route: '/reports'),
                 ],
               ),
             ),
     );
   }
 
-  Widget _tile(IconData icon, String title, Widget page) {
+  Widget _tile(IconData icon, String title, Widget? page, {String? route}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -93,7 +94,13 @@ class _DashboardMembrePageState extends State<DashboardMembrePage> {
         leading: Icon(icon, color: DashboardTheme.navy),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+        onTap: () {
+          if (route != null) {
+            Navigator.pushNamed(context, route);
+          } else if (page != null) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+          }
+        },
       ),
     );
   }

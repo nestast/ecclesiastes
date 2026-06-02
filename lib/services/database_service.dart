@@ -1,10 +1,9 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import '../models/models.dart';
+import 'database_helper.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
-  static Database? _database;
 
   factory DatabaseService() {
     return _instance;
@@ -12,105 +11,18 @@ class DatabaseService {
 
   DatabaseService._internal();
 
-  Future<Database> get database async {
-    _database ??= await _initDatabase();
-    return _database!;
-  }
+  Future<Database> get database async => DatabaseHelper.instance.database;
 
-  Future<Database> _initDatabase() async {
-    final String path = join(await getDatabasesPath(), 'ecclesiastes.db');
-    return openDatabase(
-      path,
-      version: 1,
-      onCreate: _createTables,
-    );
-  }
-
-  Future<void> _createTables(Database db, int version) async {
-    // Table des utilisateurs
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        level TEXT NOT NULL,
-        ministry TEXT,
-        apostleField TEXT NOT NULL,
-        district TEXT NOT NULL,
-        community TEXT NOT NULL,
-        isActive INTEGER DEFAULT 1,
-        createdAt TEXT NOT NULL
-      )
-    ''');
-
-    // Table des événements
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS events (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        type TEXT NOT NULL,
-        startDate TEXT NOT NULL,
-        endDate TEXT,
-        location TEXT NOT NULL,
-        apostleField TEXT,
-        district TEXT,
-        community TEXT,
-        officiator TEXT NOT NULL,
-        assistants TEXT,
-        description TEXT,
-        expectedMembers INTEGER DEFAULT 0,
-        actualMembers INTEGER DEFAULT 0,
-        offering REAL DEFAULT 0,
-        offeringCurrency TEXT DEFAULT 'FC',
-        status TEXT DEFAULT 'planned',
-        createdAt TEXT NOT NULL,
-        createdBy TEXT NOT NULL
-      )
-    ''');
-
-    // Table des rapports de sacristie
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS sacristy_reports (
-        id TEXT PRIMARY KEY,
-        eventId TEXT NOT NULL,
-        date TEXT NOT NULL,
-        memberCount INTEGER NOT NULL,
-        visitorCount INTEGER NOT NULL,
-        presentMembers TEXT,
-        saintSealed TEXT,
-        churchOrder TEXT,
-        offeringAmount REAL NOT NULL,
-        chaliceOpeners TEXT,
-        chaliceClosers TEXT,
-        holySceneDistributors TEXT,
-        sickList TEXT,
-        observations TEXT,
-        reporterName TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        FOREIGN KEY(eventId) REFERENCES events(id)
-      )
-    ''');
-
-    // Table des statistiques par niveau
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS statistics (
-        id TEXT PRIMARY KEY,
-        level TEXT NOT NULL,
-        entityType TEXT NOT NULL,
-        entityName TEXT NOT NULL,
-        totalMembers INTEGER DEFAULT 0,
-        totalVisitors INTEGER DEFAULT 0,
-        totalOfferings REAL DEFAULT 0,
-        eventsCount INTEGER DEFAULT 0,
-        lastUpdated TEXT NOT NULL
-      )
-    ''');
-  }
-
-  // Opérations sur les utilisateurs
+  // Opérations sur les utilisateurs (Unifiées avec la table utilisateurs si besoin, 
+  // mais ici on garde le mapping vers la table 'users' ou on redirige vers 'utilisateurs')
+  // Note: Pour simplifier l'unification, on va utiliser la table 'utilisateurs' de DatabaseHelper
+  
   Future<int> insertUser(AppUser user) async {
     final db = await database;
-    return db.insert('users', user.toMap());
+    // Map AppUser to DatabaseHelper's utilisateurs table if necessary, 
+    // but for now we keep the 'users' table name to avoid breaking existing logic 
+    // and rely on DatabaseHelper to have created it or use 'utilisateurs'
+    return db.insert('users', user.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<AppUser?> getUser(String id) async {

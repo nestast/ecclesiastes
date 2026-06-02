@@ -59,7 +59,7 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
               decoration: const InputDecoration(labelText: "Filtrer par District", border: OutlineInputBorder()),
               items: [
                 const DropdownMenuItem(value: null, child: Text("🌍 Vue Globale (Tout le Champ)")),
-                ..._districts.map((d) => DropdownMenuItem(value: d['nom'].toString(), child: Text(d['nom']))),
+                ..._districts.map((d) => DropdownMenuItem(value: d['id'].toString(), child: Text(d['nom']))),
               ],
               onChanged: (val) {
                 setState(() => _selectedDistrict = val);

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../models/report_type.dart';
-import '../../models/report_base.dart';
-import '../../services/report_provider.dart';
+import '../models/report_type.dart';
+import '../models/report_base.dart';
+import '../services/report_provider.dart';
 import '../widgets/report_preview_widget.dart';
 
 class ReportListScreen extends StatefulWidget {
@@ -12,14 +12,14 @@ class ReportListScreen extends StatefulWidget {
 }
 
 class _ReportListScreenState extends State<ReportListScreen> {
-  late ReportProvider _reportProvider;
+  late InteractiveReportProvider _reportProvider;
   String _searchQuery = '';
   String? _selectedTypeFilter = 'all';
 
   @override
   void initState() {
     super.initState();
-    _reportProvider = ReportProvider();
+    _reportProvider = InteractiveReportProvider();
   }
 
   void _openReportDetails(ReportBase report) {
@@ -178,9 +178,10 @@ class _ReportListScreenState extends State<ReportListScreen> {
   }
 
   Widget _buildReportsList() {
-    return ValueListenableBuilder<ReportProvider>(
-      valueListenable: _reportProvider,
-      builder: (context, provider, _) {
+    return AnimatedBuilder(
+      animation: _reportProvider,
+      builder: (context, _) {
+        final provider = _reportProvider;
         if (provider.isLoading) {
           return const Center(
             child: CircularProgressIndicator(),
@@ -192,7 +193,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
                 Text(provider.error!),
                 const SizedBox(height: 16),
@@ -209,13 +210,13 @@ class _ReportListScreenState extends State<ReportListScreen> {
         }
 
         if (provider.filteredReports.isEmpty) {
-          return Center(
+          return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.folder_open, size: 48, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text('Aucun rapport trouvé'),
+                SizedBox(height: 16),
+                Text('Aucun rapport trouvé'),
               ],
             ),
           );
@@ -267,7 +268,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                 if (report.audioSegments.isNotEmpty)
                   Row(
                     children: [
-                      Icon(Icons.audio_file, size: 16, color: Colors.orange),
+                      const Icon(Icons.audio_file, size: 16, color: Colors.orange),
                       const SizedBox(width: 4),
                       Text(
                         report.audioSegments.length.toString(),

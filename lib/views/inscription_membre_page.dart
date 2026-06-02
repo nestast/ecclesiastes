@@ -14,7 +14,7 @@ class InscriptionMembrePage extends StatefulWidget {
 
 class _InscriptionMembrePageState extends State<InscriptionMembrePage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // I. IDENTITÉ
   final _nomController = TextEditingController();
   final _postnomController = TextEditingController();
@@ -29,7 +29,7 @@ class _InscriptionMembrePageState extends State<InscriptionMembrePage> {
   // II. FILIATION
   final _nomPereController = TextEditingController();
   final _nomMereController = TextEditingController();
-  int _pereNeo = 0; 
+  int _pereNeo = 0;
   int _mereNeo = 0;
   int _membreNeo = 0;
 
@@ -43,13 +43,13 @@ class _InscriptionMembrePageState extends State<InscriptionMembrePage> {
   String? _selectedChampId;
   String? _selectedDistrict;
   String? _selectedCommunaute;
-  
+
   final _newCommunauteController = TextEditingController();
-  String _statutMembre = 'Nouveau'; 
+  String _statutMembre = 'Nouveau';
   final _communauteOrigineController = TextEditingController();
 
   // TYPE PROFIL
-  String _typeProfil = 'Membre'; 
+  String _typeProfil = 'Membre';
   final _fonctionController = TextEditingController();
 
   // V. VIE SACRAMENTELLE
@@ -263,7 +263,7 @@ class _InscriptionMembrePageState extends State<InscriptionMembrePage> {
               TextFormField(controller: _nomController, decoration: const InputDecoration(labelText: "Nom")),
               TextFormField(controller: _postnomController, decoration: const InputDecoration(labelText: "Post-nom")),
               TextFormField(controller: _prenomController, decoration: const InputDecoration(labelText: "Prénom")),
-              
+
               DropdownButtonFormField<String>(
                 initialValue: _sexe,
                 items: const [DropdownMenuItem(value: 'M', child: Text("Masculin")), DropdownMenuItem(value: 'F', child: Text("Féminin"))],
@@ -311,65 +311,73 @@ class _InscriptionMembrePageState extends State<InscriptionMembrePage> {
               TextFormField(controller: _nomPereController, decoration: const InputDecoration(labelText: "Nom du Père")),
               const SizedBox(height: 8),
               const Text("Le père est-il néo-apostolique ?"),
-              RadioGroup<int>(
-                groupValue: _pereNeo,
-                onChanged: (v) => setState(() => _pereNeo = v!),
-                child: const Column(
-                  children: [
-                    RadioListTile<int>(
-                      title: Text("Oui"),
-                      value: 1,
-                    ),
-                    RadioListTile<int>(
-                      title: Text("Non"),
-                      value: 0,
-                    ),
-                    RadioListTile<int>(
-                      title: Text("Inconnu"),
-                      value: 2,
-                    ),
-                  ],
-                ),
+              Column(
+                children: [
+                  RadioListTile<int>(
+                    title: const Text("Oui"),
+                    value: 1,
+                    groupValue: _pereNeo,
+                    onChanged: (v) => setState(() => _pereNeo = v!),
+                  ),
+                  RadioListTile<int>(
+                    title: const Text("Non"),
+                    value: 0,
+                    groupValue: _pereNeo,
+                    onChanged: (v) => setState(() => _pereNeo = v!),
+                  ),
+                  RadioListTile<int>(
+                    title: const Text("Inconnu"),
+                    value: 2,
+                    groupValue: _pereNeo,
+                    onChanged: (v) => setState(() => _pereNeo = v!),
+                  ),
+                ],
               ),
               TextFormField(controller: _nomMereController, decoration: const InputDecoration(labelText: "Nom de la Mère")),
               const SizedBox(height: 8),
               const Text("La mère est-elle néo-apostolique ?"),
-              RadioGroup<int>(
-                groupValue: _mereNeo,
-                onChanged: (v) => setState(() => _mereNeo = v!),
-                child: const Column(
-                  children: [
-                    RadioListTile<int>(
-                      title: Text("Oui"),
-                      value: 1,
-                    ),
-                    RadioListTile<int>(
-                      title: Text("Non"),
-                      value: 0,
-                    ),
-                    RadioListTile<int>(
-                      title: Text("Inconnu"),
-                      value: 2,
-                    ),
-                  ],
-                ),
+              Column(
+                children: [
+                  RadioListTile<int>(
+                    title: const Text("Oui"),
+                    value: 1,
+                    groupValue: _mereNeo,
+                    onChanged: (v) => setState(() => _mereNeo = v!),
+                  ),
+                  RadioListTile<int>(
+                    title: const Text("Non"),
+                    value: 0,
+                    groupValue: _mereNeo,
+                    onChanged: (v) => setState(() => _mereNeo = v!),
+                  ),
+                  RadioListTile<int>(
+                    title: const Text("Inconnu"),
+                    value: 2,
+                    groupValue: _mereNeo,
+                    onChanged: (v) => setState(() => _mereNeo = v!),
+                  ),
+                ],
               ),
               const Text("Le membre est-il néo-apostolique de naissance ?"),
-              RadioGroup<int>(
-                groupValue: _membreNeo,
-                onChanged: (v) => setState(() => _membreNeo = v!),
-                child: const Row(
-                  children: [
-                    RadioListTile<int>(
-                      title: Text("Oui"),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<int>(
+                      title: const Text("Oui"),
                       value: 1,
+                      groupValue: _membreNeo,
+                      onChanged: (v) => setState(() => _membreNeo = v!),
                     ),
-                    RadioListTile<int>(
-                      title: Text("Non"),
+                  ),
+                  Expanded(
+                    child: RadioListTile<int>(
+                      title: const Text("Non"),
                       value: 0,
+                      groupValue: _membreNeo,
+                      onChanged: (v) => setState(() => _membreNeo = v!),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 25),

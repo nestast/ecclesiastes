@@ -87,10 +87,10 @@ class _HierarchiePageState extends State<HierarchiePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ListTile(
-                leading: const Icon(Icons.account_circle, color: Colors.blue),
-                title: const Text('Apôtre Mpaka Gilbert Nzakimuena'),
-                subtitle: const Text('Né en 1966\nChamp KSE depuis 2022'),
+              const ListTile(
+                leading: Icon(Icons.account_circle, color: Colors.blue),
+                title: Text('Apôtre Mpaka Gilbert Nzakimuena'),
+                subtitle: Text('Né en 1966\nChamp KSE depuis 2022'),
               ),
               const Divider(),
               _profileItem(Icons.verified_user, 'Ordination', '10 juillet 2022 par Apôtre-patriarche Jean-Luc Schneider'),

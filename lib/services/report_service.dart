@@ -1,46 +1,16 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import 'dart:convert';
 import '../models/report_base.dart';
 import '../models/meeting_report.dart';
 import '../models/visit_report.dart';
 import '../models/divine_service_report.dart';
 import '../models/report_type.dart';
+import 'database_helper.dart';
 
 class ReportService {
-  static Database? _database;
   static const String tableName = 'reports';
 
-  Future<Database> get database async {
-    _database ??= await _initDatabase();
-    return _database!;
-  }
-
-  Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'ecclesiastes_reports.db');
-
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _onCreate,
-    );
-  }
-
-  Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE $tableName (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        title TEXT NOT NULL,
-        author TEXT NOT NULL,
-        data TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT,
-        isCompleted INTEGER DEFAULT 0
-      )
-    ''');
-  }
+  Future<Database> get database async => DatabaseHelper.instance.database;
 
   Future<String> createReport(ReportBase report) async {
     final db = await database;
@@ -146,6 +116,6 @@ class ReportService {
   }
 
   Future<void> close() async {
-    await _database?.close();
+    // Database closing is handled by DatabaseHelper if necessary
   }
 }

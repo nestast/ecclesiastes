@@ -3,14 +3,14 @@ import 'report_type.dart';
 import 'audio_segment.dart';
 
 abstract class ReportBase {
-  final String id;
-  final ReportType type;
-  final String title;
-  final String author;
-  final DateTime createdAt;
-  final DateTime? updatedAt;
-  final List<AudioSegment> audioSegments;
-  final Map<String, dynamic> metadata;
+  String id;
+  ReportType type;
+  String title;
+  String author;
+  DateTime createdAt;
+  DateTime? updatedAt;
+  List<AudioSegment> audioSegments;
+  Map<String, dynamic> metadata;
   bool isCompleted;
 
   ReportBase({

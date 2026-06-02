@@ -20,17 +20,17 @@ class CreateReportScreen extends StatefulWidget {
 
 class _CreateReportScreenState extends State<CreateReportScreen>
     with SingleTickerProviderStateMixin {
-  late ReportProvider _reportProvider;
+  late InteractiveReportProvider _reportProvider;
   ReportType? _selectedType;
   dynamic _currentReport;
   late TabController _tabController;
   final List<AudioSegment> _recordedAudios = [];
-  String _authorName = 'Admin';
+  final String _authorName = 'Admin';
 
   @override
   void initState() {
     super.initState();
-    _reportProvider = ReportProvider();
+    _reportProvider = InteractiveReportProvider();
     _tabController = TabController(length: 2, vsync: this);
   }
 
@@ -288,7 +288,7 @@ class _CreateReportScreenState extends State<CreateReportScreen>
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: Icon(Icons.audio_file, color: Colors.orange),
+                  leading: const Icon(Icons.audio_file, color: Colors.orange),
                   title: Text(audio.section),
                   subtitle: Text(
                     'Durée: ${audio.duration.inSeconds}s',

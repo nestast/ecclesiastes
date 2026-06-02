@@ -4,7 +4,7 @@ import 'package:ecclesiaste/utils/password_utils.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 
 class DatabaseHelper {
-  static const int _dbVersion = 5;
+  static const int _dbVersion = 6;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -135,15 +135,114 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE evenements (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         titre TEXT NOT NULL,
         description TEXT,
         date_evenement TEXT NOT NULL,
+        date_fin TEXT,
+        lieu TEXT,
         type TEXT,
         niveau TEXT,
         commission_liee TEXT,
         auteur_id TEXT,
-        entite_id TEXT
+        entite_id TEXT,
+        officiant TEXT,
+        assistants TEXT,
+        membres_attendus INTEGER DEFAULT 0,
+        membres_presents INTEGER DEFAULT 0,
+        offrande REAL DEFAULT 0,
+        devise TEXT DEFAULT 'FC',
+        statut TEXT DEFAULT 'prevu',
+        date_creation TEXT
+      )
+    ''');
+
+    // Pour compatibilité avec l'ancien système Reports
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS events (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL,
+        startDate TEXT NOT NULL,
+        endDate TEXT,
+        location TEXT NOT NULL,
+        apostleField TEXT,
+        district TEXT,
+        community TEXT,
+        officiator TEXT NOT NULL,
+        assistants TEXT,
+        description TEXT,
+        expectedMembers INTEGER DEFAULT 0,
+        actualMembers INTEGER DEFAULT 0,
+        offering REAL DEFAULT 0,
+        offeringCurrency TEXT DEFAULT 'FC',
+        status TEXT DEFAULT 'planned',
+        createdAt TEXT NOT NULL,
+        createdBy TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        level TEXT NOT NULL,
+        ministry TEXT,
+        apostleField TEXT NOT NULL,
+        district TEXT NOT NULL,
+        community TEXT NOT NULL,
+        isActive INTEGER DEFAULT 1,
+        createdAt TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE reports (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        author TEXT NOT NULL,
+        data TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT,
+        isCompleted INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sacristy_reports (
+        id TEXT PRIMARY KEY,
+        eventId TEXT NOT NULL,
+        date TEXT NOT NULL,
+        memberCount INTEGER NOT NULL,
+        visitorCount INTEGER NOT NULL,
+        presentMembers TEXT,
+        saintSealed TEXT,
+        churchOrder TEXT,
+        offeringAmount REAL NOT NULL,
+        chaliceOpeners TEXT,
+        chaliceClosers TEXT,
+        holySceneDistributors TEXT,
+        sickList TEXT,
+        observations TEXT,
+        reporterName TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY(eventId) REFERENCES evenements(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS statistics (
+        id TEXT PRIMARY KEY,
+        level TEXT NOT NULL,
+        entityType TEXT NOT NULL,
+        entityName TEXT NOT NULL,
+        totalMembers INTEGER DEFAULT 0,
+        totalVisitors INTEGER DEFAULT 0,
+        totalOfferings REAL DEFAULT 0,
+        eventsCount INTEGER DEFAULT 0,
+        lastUpdated TEXT NOT NULL
       )
     ''');
 
@@ -271,6 +370,105 @@ class DatabaseHelper {
           )
         ''');
       } catch (_) {}
+    }
+    if (oldVersion < 6) {
+      // Unification : ajout des tables de rapports et mise à jour des événements
+      for (final tableSql in [
+        '''CREATE TABLE IF NOT EXISTS reports (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            author TEXT NOT NULL,
+            data TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT,
+            isCompleted INTEGER DEFAULT 0
+          )''',
+        '''CREATE TABLE IF NOT EXISTS sacristy_reports (
+            id TEXT PRIMARY KEY,
+            eventId TEXT NOT NULL,
+            date TEXT NOT NULL,
+            memberCount INTEGER NOT NULL,
+            visitorCount INTEGER NOT NULL,
+            presentMembers TEXT,
+            saintSealed TEXT,
+            churchOrder TEXT,
+            offeringAmount REAL NOT NULL,
+            chaliceOpeners TEXT,
+            chaliceClosers TEXT,
+            holySceneDistributors TEXT,
+            sickList TEXT,
+            observations TEXT,
+            reporterName TEXT NOT NULL,
+            createdAt TEXT NOT NULL
+          )''',
+        '''CREATE TABLE IF NOT EXISTS events (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            type TEXT NOT NULL,
+            startDate TEXT NOT NULL,
+            endDate TEXT,
+            location TEXT NOT NULL,
+            apostleField TEXT,
+            district TEXT,
+            community TEXT,
+            officiator TEXT NOT NULL,
+            assistants TEXT,
+            description TEXT,
+            expectedMembers INTEGER DEFAULT 0,
+            actualMembers INTEGER DEFAULT 0,
+            offering REAL DEFAULT 0,
+            offeringCurrency TEXT DEFAULT 'FC',
+            status TEXT DEFAULT 'planned',
+            createdAt TEXT NOT NULL,
+            createdBy TEXT NOT NULL
+          )''',
+        '''CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            level TEXT NOT NULL,
+            ministry TEXT,
+            apostleField TEXT NOT NULL,
+            district TEXT NOT NULL,
+            community TEXT NOT NULL,
+            isActive INTEGER DEFAULT 1,
+            createdAt TEXT NOT NULL
+          )''',
+        '''CREATE TABLE IF NOT EXISTS statistics (
+            id TEXT PRIMARY KEY,
+            level TEXT NOT NULL,
+            entityType TEXT NOT NULL,
+            entityName TEXT NOT NULL,
+            totalMembers INTEGER DEFAULT 0,
+            totalVisitors INTEGER DEFAULT 0,
+            totalOfferings REAL DEFAULT 0,
+            eventsCount INTEGER DEFAULT 0,
+            lastUpdated TEXT NOT NULL
+          )'''
+      ]) {
+        try {
+          await db.execute(tableSql);
+        } catch (_) {}
+      }
+
+      // Mise à jour de evenements (on tente d'ajouter les colonnes une à une pour ne pas tout casser)
+      for (final col in [
+        "ALTER TABLE evenements ADD COLUMN date_fin TEXT",
+        "ALTER TABLE evenements ADD COLUMN lieu TEXT",
+        "ALTER TABLE evenements ADD COLUMN officiant TEXT",
+        "ALTER TABLE evenements ADD COLUMN assistants TEXT",
+        "ALTER TABLE evenements ADD COLUMN membres_attendus INTEGER DEFAULT 0",
+        "ALTER TABLE evenements ADD COLUMN membres_presents INTEGER DEFAULT 0",
+        "ALTER TABLE evenements ADD COLUMN offrande REAL DEFAULT 0",
+        "ALTER TABLE evenements ADD COLUMN devise TEXT DEFAULT 'FC'",
+        "ALTER TABLE evenements ADD COLUMN statut TEXT DEFAULT 'prevu'",
+        "ALTER TABLE evenements ADD COLUMN date_creation TEXT",
+      ]) {
+        try {
+          await db.execute(col);
+        } catch (_) {}
+      }
     }
   }
 

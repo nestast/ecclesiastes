@@ -8,7 +8,7 @@ import 'package:logger/logger.dart';
 final logger = Logger();
 
 class AudioService {
-  final AudioRecorder _recorder = AudioRecorder();
+  final Record _recorder = Record();
   final AudioPlayer _player = AudioPlayer();
   
   String? _currentRecordingPath;
@@ -38,12 +38,10 @@ class AudioService {
         _currentRecordingPath = '${audioDir.path}/$fileName';
 
         await _recorder.start(
-          RecordConfig(
-            encoder: AudioEncoder.aacLc,
-            bitRate: 128000,
-            sampleRate: 44100,
-          ),
           path: _currentRecordingPath!,
+          encoder: AudioEncoder.aacLc,
+          bitRate: 128000,
+          samplingRate: 44100,
         );
 
         _isRecording = true;

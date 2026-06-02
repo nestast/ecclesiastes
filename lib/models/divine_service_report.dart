@@ -32,7 +32,7 @@ class DivineServiceReport extends ReportBase {
     List<AudioSegment>? audioSegments,
     Map<String, dynamic>? metadata,
     bool isCompleted = false,
-  ) : speakers = speakers ?? [],
+  }) : speakers = speakers ?? [],
       hymns = hymns ?? [],
       collections = collections ?? {},
       observations = observations ?? [],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:ecclesiaste/services/auth_service.dart';
 import 'package:ecclesiaste/services/database_helper.dart';
 import 'package:ecclesiaste/utils/constants.dart';
@@ -106,7 +107,9 @@ class _DashboardCommissionPageState extends State<DashboardCommissionPage> {
                     const Text('À la Une', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     AlaUneCarousel(items: _annonces),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
+                    _buildProgressSection(comm),
+                    const SizedBox(height: 24),
                     const Text('Actions commission', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     _action(Icons.groups, 'Gérer les membres de la commission', () {
@@ -123,7 +126,10 @@ class _DashboardCommissionPageState extends State<DashboardCommissionPage> {
                     _action(Icons.event, 'Programmes & réunions', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendrierPage()));
                     }),
-                    _action(Icons.assignment, 'Rapport d\'activité', () {
+                    _action(Icons.assessment, 'Rapports d\'activité interactifs', () {
+                      Navigator.pushNamed(context, '/reports');
+                    }),
+                    _action(Icons.assignment, 'Rapport commission (version simplifiée)', () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Rapport commission — à compléter')),
                       );
@@ -147,6 +153,61 @@ class _DashboardCommissionPageState extends State<DashboardCommissionPage> {
         title: Text(label),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildProgressSection(Map<String, dynamic>? comm) {
+    final pct = (comm?['pct'] as int? ?? 0).toDouble();
+    final remaining = 100.0 - pct;
+    final color = pct >= 80 ? Colors.green : (pct >= 60 ? Colors.orange : Colors.red);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: DashboardTheme.cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Progression des objectifs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('$pct%', style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 18)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 140,
+            child: PieChart(
+              PieChartData(
+                startDegreeOffset: 270,
+                sectionsSpace: 0,
+                centerSpaceRadius: 40,
+                sections: [
+                  PieChartSectionData(
+                    color: color,
+                    value: pct,
+                    title: '',
+                    radius: 25,
+                  ),
+                  PieChartSectionData(
+                    color: Colors.grey.shade200,
+                    value: remaining,
+                    title: '',
+                    radius: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Center(
+            child: Text(
+              'Objectifs du trimestre en cours',
+              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -30,7 +30,7 @@ class VisitReport extends ReportBase {
     List<AudioSegment>? audioSegments,
     Map<String, dynamic>? metadata,
     bool isCompleted = false,
-  ) : visitedPeople = visitedPeople ?? [],
+  }) : visitedPeople = visitedPeople ?? [],
       recommendations = recommendations ?? [],
       super(
         id: id,

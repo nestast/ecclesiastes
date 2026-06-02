@@ -7,6 +7,8 @@ import 'package:ecclesiaste/services/database_helper.dart';
 import 'package:ecclesiaste/services/notification_service.dart';
 import 'package:ecclesiaste/services/logging_service.dart';
 import 'package:ecclesiaste/utils/secure_storage_helper.dart';
+import 'package:ecclesiaste/views/report_list_screen.dart';
+import 'package:ecclesiaste/views/create_report_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
@@ -66,6 +68,8 @@ class EgliseApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) => const DashboardPage(),
+        '/reports': (context) => const ReportListScreen(),
+        '/create-report': (context) => const CreateReportScreen(),
       },
     );
   }

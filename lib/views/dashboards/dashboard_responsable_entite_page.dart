@@ -179,6 +179,18 @@ class _DashboardResponsableEntitePageState extends State<DashboardResponsableEnt
                           ),
                         ],
                       ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _quickAction(Icons.assessment_outlined, 'Rapports Activité', () {
+                              Navigator.pushNamed(context, '/reports');
+                            }),
+                          ),
+                          const SizedBox(width: 10),
+                          const Spacer(),
+                        ],
+                      ),
                       const SizedBox(height: 20),
                     ],
                     if (UserAccessProfile.canSeeCommissionsGrid) ...[

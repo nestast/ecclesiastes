@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/report_base.dart';
 import '../services/report_service.dart';
 
-class ReportProvider extends ChangeNotifier {
+class InteractiveReportProvider extends ChangeNotifier {
   final ReportService _reportService = ReportService();
   
   List<ReportBase> _allReports = [];
@@ -18,8 +18,12 @@ class ReportProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  ReportProvider() {
+  InteractiveReportProvider() {
     _loadAllReports();
+  }
+
+  Future<void> reloadReports() async {
+    await _loadAllReports();
   }
 
   Future<void> _loadAllReports() async {

@@ -38,7 +38,7 @@ class MeetingReport extends ReportBase {
     List<AudioSegment>? audioSegments,
     Map<String, dynamic>? metadata,
     bool isCompleted = false,
-  ) : presentees = presentees ?? [],
+  }) : presentees = presentees ?? [],
       absentes = absentes ?? [],
       discussionPoints = discussionPoints ?? [],
       actions = actions ?? [],

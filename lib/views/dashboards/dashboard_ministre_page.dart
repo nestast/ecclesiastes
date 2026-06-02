@@ -154,6 +154,10 @@ class _DashboardMinistrePageState extends State<DashboardMinistrePage> {
                                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StatistiquesPage())),
                                 child: const Text('Stats', style: TextStyle(color: Colors.white)),
                               ),
+                              TextButton(
+                                onPressed: () => Navigator.pushNamed(context, '/reports'),
+                                child: const Text('Rapports', style: TextStyle(color: Colors.white)),
+                              ),
                             ],
                           ),
                         ],
