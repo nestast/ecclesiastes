@@ -1,10 +1,12 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'dart:io';
 
 class NotificationService {
   static final _notifications = FlutterLocalNotificationsPlugin();
 
   static Future<void> init() async {
+    if (kIsWeb) return;
+
     // Configuration Android
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     
@@ -30,7 +32,7 @@ class NotificationService {
     );
 
     // Demander les permissions spécifiquement pour Android 13+
-    if (Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       _notifications
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
@@ -39,6 +41,8 @@ class NotificationService {
   }
 
   static Future<void> showNotification({String? title, String? body}) async {
+    if (kIsWeb) return;
+
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         'ecclesiaste_channel_id', // ID unique du canal

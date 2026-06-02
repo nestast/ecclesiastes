@@ -24,6 +24,7 @@ class _ReportFormPageState extends State<ReportFormPage> {
   void _saveReport() async {
     if (_formKey.currentState!.validate()) {
       final db = await DatabaseHelper.instance.database;
+      if (db == null) return;
       await db.insert('rapports', {
         'id': DateTime.now().millisecondsSinceEpoch.toString(),
         'entite_id': 'COM_01', // À lier à la communauté sélectionnée

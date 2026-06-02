@@ -49,6 +49,7 @@ class AdminService {
       'statut_membre': 'Actif',
     };
     final database = await DatabaseHelper.instance.database;
+    if (database == null) return;
     final existing = await database.query(
       'membres',
       where: 'id = ?',

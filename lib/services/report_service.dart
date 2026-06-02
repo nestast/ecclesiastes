@@ -10,10 +10,11 @@ import 'database_helper.dart';
 class ReportService {
   static const String tableName = 'reports';
 
-  Future<Database> get database async => DatabaseHelper.instance.database;
+  Future<Database?> get database async => DatabaseHelper.instance.database;
 
   Future<String> createReport(ReportBase report) async {
     final db = await database;
+    if (db == null) return report.id;
     await db.insert(
       tableName,
       {
@@ -32,6 +33,7 @@ class ReportService {
 
   Future<ReportBase?> getReport(String id) async {
     final db = await database;
+    if (db == null) return null;
     final result = await db.query(
       tableName,
       where: 'id = ?',
@@ -45,6 +47,7 @@ class ReportService {
 
   Future<List<ReportBase>> getAllReports({String? typeFilter}) async {
     final db = await database;
+    if (db == null) return [];
     List<Map<String, dynamic>> result;
 
     if (typeFilter != null) {
@@ -63,6 +66,7 @@ class ReportService {
 
   Future<void> updateReport(ReportBase report) async {
     final db = await database;
+    if (db == null) return;
     await db.update(
       tableName,
       {
@@ -77,6 +81,7 @@ class ReportService {
 
   Future<void> deleteReport(String id) async {
     final db = await database;
+    if (db == null) return;
     await db.delete(
       tableName,
       where: 'id = ?',
@@ -86,6 +91,7 @@ class ReportService {
 
   Future<int> getReportCount({String? typeFilter}) async {
     final db = await database;
+    if (db == null) return 0;
     final result = typeFilter != null
         ? await db.rawQuery(
             'SELECT COUNT(*) as count FROM $tableName WHERE type = ?',

@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ecclesiaste/utils/password_utils.dart';
 import 'package:ecclesiaste/utils/entite_types.dart';
 
@@ -10,7 +11,10 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
-  Future<Database> get database async {
+  Future<Database?> get database async {
+    if (kIsWeb) {
+      return null;
+    }
     if (_database != null) return _database!;
     _database = await _initDB('eglise_v4.db');
     return _database!;
@@ -622,7 +626,8 @@ class DatabaseHelper {
   // --- HIÉRARCHIE (4 niveaux) ---
   Future<List<Map<String, dynamic>>> getEglisesTerritoriales() async {
     final db = await database;
-    return db.query(
+    if (db == null) return [];
+    return db!.query(
       'entites',
       where: 'type = ?',
       whereArgs: [EntiteTypes.egliseTerritoriale],
@@ -636,10 +641,11 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getDistricts({String? champId}) async {
     final db = await database;
+    if (db == null) return [];
     if (champId != null && champId.isNotEmpty) {
       return getSubEntites(champId, EntiteTypes.district);
     }
-    return db.query(
+    return db!.query(
       'entites',
       where: 'type = ?',
       whereArgs: [EntiteTypes.district],
@@ -654,16 +660,17 @@ class DatabaseHelper {
   /// Enfants d'un parent, ou églises territoriales si [parentId] est null et [childType] est EGLISE_TERRITORIALE.
   Future<List<Map<String, dynamic>>> getSubEntites(String? parentId, String childType) async {
     final db = await database;
+    if (db == null) return [];
     final type = EntiteTypes.normalize(childType);
     if (parentId == null || parentId.isEmpty) {
-      return db.query(
+      return db!.query(
         'entites',
         where: 'parent_id IS NULL AND type = ?',
         whereArgs: [type],
         orderBy: 'nom ASC',
       );
     }
-    return db.query(
+    return db!.query(
       'entites',
       where: 'parent_id = ? AND type = ?',
       whereArgs: [parentId, type],
@@ -673,12 +680,14 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getAllEntites() async {
     final db = await database;
-    return db.query('entites', orderBy: 'type, nom');
+    if (db == null) return [];
+    return db!.query('entites', orderBy: 'type, nom');
   }
 
   Future<List<Map<String, dynamic>>> getEntitesByType(String type) async {
     final db = await database;
-    return db.query(
+    if (db == null) return [];
+    return db!.query(
       'entites',
       where: 'type = ?',
       whereArgs: [EntiteTypes.normalize(type)],
@@ -688,7 +697,8 @@ class DatabaseHelper {
 
   Future<Map<String, dynamic>?> getEntiteById(String id) async {
     final db = await database;
-    final rows = await db.query('entites', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (db == null) return null;
+    final rows = await db!.query('entites', where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) return null;
     return rows.first;
   }
@@ -709,6 +719,7 @@ class DatabaseHelper {
   /// Comptages districts / communautés (optionnellement sous un champ).
   Future<Map<String, int>> getEntiteCounts({String? champId}) async {
     final db = await database;
+    if (db == null) return {'districts': 0, 'communautes': 0, 'champs': 0};
     if (champId != null && champId.isNotEmpty) {
       final districts = await getSubEntites(champId, EntiteTypes.district);
       var commCount = 0;
@@ -718,17 +729,17 @@ class DatabaseHelper {
       }
       return {'districts': districts.length, 'communautes': commCount, 'champs': 1};
     }
-    final d = Sqflite.firstIntValue(await db.rawQuery(
+    final d = Sqflite.firstIntValue(await db!.rawQuery(
           'SELECT COUNT(*) FROM entites WHERE type = ?',
           [EntiteTypes.district],
         )) ??
         0;
-    final c = Sqflite.firstIntValue(await db.rawQuery(
+    final c = Sqflite.firstIntValue(await db!.rawQuery(
           'SELECT COUNT(*) FROM entites WHERE type = ?',
           [EntiteTypes.communaute],
         )) ??
         0;
-    final ch = Sqflite.firstIntValue(await db.rawQuery(
+    final ch = Sqflite.firstIntValue(await db!.rawQuery(
           'SELECT COUNT(*) FROM entites WHERE type = ?',
           [EntiteTypes.champApostolique],
         )) ??
@@ -744,7 +755,8 @@ class DatabaseHelper {
     String responsableNom = 'À définir',
   }) async {
     final db = await database;
-    return db.insert('entites', {
+    if (db == null) return 0;
+    return db!.insert('entites', {
       'id': id,
       'nom': nom,
       'type': type,
@@ -759,7 +771,8 @@ class DatabaseHelper {
     final districtId = row['district_id']?.toString();
     await insertEntite(id: id, nom: nom, type: EntiteTypes.communaute, parentId: districtId);
     final db = await database;
-    return db.insert('communautes', {
+    if (db == null) return 0;
+    return db!.insert('communautes', {
       'nom': nom,
       'district_id': districtId ?? '',
     });
@@ -768,7 +781,8 @@ class DatabaseHelper {
   // --- UTILISATEURS ---
   Future<Map<String, dynamic>?> getUtilisateurByIdentifiant(String identifiant) async {
     final db = await database;
-    final rows = await db.rawQuery(
+    if (db == null) return null;
+    final rows = await db!.rawQuery(
       'SELECT * FROM utilisateurs WHERE LOWER(identifiant) = ? LIMIT 1',
       [identifiant.toLowerCase()],
     );
@@ -792,7 +806,8 @@ class DatabaseHelper {
     String? ministere,
   }) async {
     final db = await database;
-    return db.insert('utilisateurs', {
+    if (db == null) return 0;
+    return db!.insert('utilisateurs', {
       'id': 'USR_${DateTime.now().millisecondsSinceEpoch}',
       'identifiant': identifiant.toLowerCase(),
       'mot_de_passe_hash': motDePasseHash,
@@ -809,19 +824,22 @@ class DatabaseHelper {
 
   Future<int> validerUtilisateur(String id) async {
     final db = await database;
-    return db.update('utilisateurs', {'statut_validation': 1}, where: 'id = ?', whereArgs: [id]);
+    if (db == null) return 0;
+    return db!.update('utilisateurs', {'statut_validation': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> supprimerUtilisateur(String id) async {
     final db = await database;
-    return db.delete('utilisateurs', where: 'id = ?', whereArgs: [id]);
+    if (db == null) return 0;
+    return db!.delete('utilisateurs', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Map<String, dynamic>>> getUtilisateursEnAttente({String? entiteId}) async {
     final db = await database;
+    if (db == null) return [];
     // Auto-nettoyage des inscriptions de plus de 3 jours expirées
     final now = DateTime.now();
-    final users = await db.query('utilisateurs', where: 'statut_validation = ?', whereArgs: [0]);
+    final users = await db!.query('utilisateurs', where: 'statut_validation = ?', whereArgs: [0]);
     for (final u in users) {
       final dateStr = u['date_inscription']?.toString();
       if (dateStr != null && dateStr.isNotEmpty) {
@@ -833,9 +851,9 @@ class DatabaseHelper {
     }
 
     if (entiteId == null || entiteId == 'TOUS') {
-      return db.query('utilisateurs', where: 'statut_validation = ? AND role != ?', whereArgs: [0, 'SUPER_ADMIN'], orderBy: 'nom_complet ASC');
+      return db!.query('utilisateurs', where: 'statut_validation = ? AND role != ?', whereArgs: [0, 'SUPER_ADMIN'], orderBy: 'nom_complet ASC');
     }
-    return db.query(
+    return db!.query(
       'utilisateurs',
       where: 'statut_validation = ? AND entite_id = ? AND role != ?',
       whereArgs: [0, entiteId, 'SUPER_ADMIN'],
@@ -845,7 +863,8 @@ class DatabaseHelper {
 
   Future<int> mettreAJourMotDePasse(String identifiant, String motDePasseHash) async {
     final db = await database;
-    return db.update(
+    if (db == null) return 0;
+    return db!.update(
       'utilisateurs',
       {'mot_de_passe_hash': motDePasseHash},
       where: 'LOWER(identifiant) = ?',
@@ -855,7 +874,8 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getCommunautesAvecChemin() async {
     final db = await database;
-    final all = await db.query('entites');
+    if (db == null) return [];
+    final all = await db!.query('entites');
     final byId = {for (final e in all) e['id'].toString(): e};
     final comms = all.where((e) => EntiteTypes.normalize(e['type']?.toString()) == EntiteTypes.communaute);
 
@@ -883,33 +903,38 @@ class DatabaseHelper {
   // --- MEMBRES ---
   Future<int> insertMembre(Map<String, dynamic> row) async {
     final db = await database;
+    if (db == null) return 0;
     final data = Map<String, dynamic>.from(row);
     data.putIfAbsent('date_inscription', () => DateTime.now().toIso8601String());
     data.putIfAbsent('statut_validation', () => 0);
-    return db.insert('membres', data);
+    return db!.insert('membres', data);
   }
 
   Future<int> updateMembre(String id, Map<String, dynamic> row) async {
     final db = await database;
-    return db.update('membres', row, where: 'id = ?', whereArgs: [id]);
+    if (db == null) return 0;
+    return db!.update('membres', row, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> validerMembre(String id) async {
     final db = await database;
-    return db.update('membres', {'statut_validation': 1}, where: 'id = ?', whereArgs: [id]);
+    if (db == null) return 0;
+    return db!.update('membres', {'statut_validation': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> supprimerMembre(String id) async {
     final db = await database;
-    return db.delete('membres', where: 'id = ?', whereArgs: [id]);
+    if (db == null) return 0;
+    return db!.delete('membres', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Map<String, dynamic>>> getMembresEnAttente({String? communauteId}) async {
     final db = await database;
+    if (db == null) return [];
     if (communauteId == null || communauteId == 'TOUS') {
-      return db.query('membres', where: 'statut_validation = ?', whereArgs: [0], orderBy: 'nom ASC');
+      return db!.query('membres', where: 'statut_validation = ?', whereArgs: [0], orderBy: 'nom ASC');
     }
-    return db.query(
+    return db!.query(
       'membres',
       where: 'statut_validation = ? AND communaute_id = ?',
       whereArgs: [0, communauteId],
@@ -922,6 +947,7 @@ class DatabaseHelper {
     String? commission,
   }) async {
     final db = await database;
+    if (db == null) return [];
     String where = 'statut_validation = ?';
     final args = <dynamic>[1];
     if (communauteId != null && communauteId.isNotEmpty) {
@@ -932,35 +958,37 @@ class DatabaseHelper {
       where += ' AND commission = ?';
       args.add(commission);
     }
-    return db.query('membres', where: where, whereArgs: args, orderBy: 'nom ASC');
+    return db!.query('membres', where: where, whereArgs: args, orderBy: 'nom ASC');
   }
 
   Future<int> getTotalMembres({String? communauteId}) async {
     final db = await database;
+    if (db == null) return 0;
     if (communauteId != null && communauteId.isNotEmpty) {
-      return Sqflite.firstIntValue(await db.rawQuery(
+      return Sqflite.firstIntValue(await db!.rawQuery(
             'SELECT COUNT(*) FROM membres WHERE statut_validation = 1 AND communaute_id = ?',
             [communauteId],
           )) ??
           0;
     }
     return Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM membres WHERE statut_validation = 1'),
+          await db!.rawQuery('SELECT COUNT(*) FROM membres WHERE statut_validation = 1'),
         ) ??
         0;
   }
 
   Future<int> getUnvalidatedCount({String? communauteId}) async {
     final db = await database;
+    if (db == null) return 0;
     if (communauteId != null && communauteId.isNotEmpty) {
-      return Sqflite.firstIntValue(await db.rawQuery(
+      return Sqflite.firstIntValue(await db!.rawQuery(
             'SELECT COUNT(*) FROM membres WHERE statut_validation = 0 AND communaute_id = ?',
             [communauteId],
           )) ??
           0;
     }
     return Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM membres WHERE statut_validation = 0'),
+          await db!.rawQuery('SELECT COUNT(*) FROM membres WHERE statut_validation = 0'),
         ) ??
         0;
   }
@@ -968,13 +996,14 @@ class DatabaseHelper {
   // --- STATISTIQUES ---
   Future<Map<String, int>> getStatsCommissions({String? districtId}) async {
     final db = await database;
+    if (db == null) return {};
     String where = 'statut_validation = 1';
     final args = <dynamic>[];
     if (districtId != null && districtId.isNotEmpty) {
       where += ' AND district_id = ?';
       args.add(districtId);
     }
-    final res = await db.rawQuery(
+    final res = await db!.rawQuery(
       'SELECT commission, COUNT(*) as count FROM membres WHERE $where GROUP BY commission',
       args,
     );
@@ -983,18 +1012,19 @@ class DatabaseHelper {
 
   Future<Map<String, int>> getStatsSacrements({String? districtId}) async {
     final db = await database;
+    if (db == null) return {'Baptisés': 0, 'Scellés': 0};
     String filter = '';
     final args = <dynamic>[];
     if (districtId != null && districtId.isNotEmpty) {
       filter = ' AND district_id = ?';
       args.add(districtId);
     }
-    final b = Sqflite.firstIntValue(await db.rawQuery(
+    final b = Sqflite.firstIntValue(await db!.rawQuery(
           'SELECT COUNT(*) FROM membres WHERE baptise = 1$filter',
           args,
         )) ??
         0;
-    final s = Sqflite.firstIntValue(await db.rawQuery(
+    final s = Sqflite.firstIntValue(await db!.rawQuery(
           'SELECT COUNT(*) FROM membres WHERE scelle = 1$filter',
           args,
         )) ??
@@ -1005,42 +1035,47 @@ class DatabaseHelper {
   // --- ÉVÉNEMENTS ---
   Future<List<Map<String, dynamic>>> getEvenements({String? entiteId}) async {
     final db = await database;
+    if (db == null) return [];
     if (entiteId != null && entiteId.isNotEmpty) {
-      return db.query(
+      return db!.query(
         'evenements',
         where: 'entite_id = ? OR entite_id IS NULL',
         whereArgs: [entiteId],
         orderBy: 'date_evenement ASC',
       );
     }
-    return db.query('evenements', orderBy: 'date_evenement ASC');
+    return db!.query('evenements', orderBy: 'date_evenement ASC');
   }
 
   Future<int> insertEvenement(Map<String, dynamic> row) async {
     final db = await database;
+    if (db == null) return 0;
     final data = Map<String, dynamic>.from(row);
     data.remove('id');
     if (data.containsKey('date_debut')) {
       data['date_evenement'] = data.remove('date_debut');
     }
-    return db.insert('evenements', data);
+    return db!.insert('evenements', data);
   }
 
   // --- ANNONCES & FINANCES ---
   Future<List<Map<String, dynamic>>> getAnnoncesRecent() async {
     final db = await database;
-    return db.query('annonces', orderBy: 'date_publication DESC', limit: 10);
+    if (db == null) return [];
+    return db!.query('annonces', orderBy: 'date_publication DESC', limit: 10);
   }
 
   Future<int> insertAnnonce(Map<String, dynamic> row) async {
     final db = await database;
-    return db.insert('annonces', row);
+    if (db == null) return 0;
+    return db!.insert('annonces', row);
   }
 
   Future<List<Map<String, dynamic>>> getAnniversairesDuJour() async {
     final db = await database;
+    if (db == null) return [];
     final dateDuJour = DateTime.now().toIso8601String().substring(5, 10);
-    return db.rawQuery(
+    return db!.rawQuery(
       "SELECT nom, prenom, telephone, date_naissance FROM membres WHERE strftime('%m-%d', date_naissance) = ?",
       [dateDuJour],
     );
@@ -1048,26 +1083,28 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getJournalFinancier({String? entiteId}) async {
     final db = await database;
+    if (db == null) return [];
     if (entiteId != null && entiteId.isNotEmpty) {
-      return db.query(
+      return db!.query(
         'finances',
         where: 'entite_id = ?',
         whereArgs: [entiteId],
         orderBy: 'date_saisie DESC',
       );
     }
-    return db.query('finances', orderBy: 'date_saisie DESC');
+    return db!.query('finances', orderBy: 'date_saisie DESC');
   }
 
   Future<int> insertFinances(Map<String, dynamic> row) async {
     final db = await database;
+    if (db == null) return 0;
     final data = Map<String, dynamic>.from(row);
     data.remove('id');
     if (data.containsKey('date_paiement')) {
       data['date_saisie'] = data.remove('date_paiement');
     }
     data.putIfAbsent('date_saisie', () => DateTime.now().toIso8601String().split('T').first);
-    return db.insert('finances', data);
+    return db!.insert('finances', data);
   }
 
   Future<int> transfererMembre(
@@ -1077,7 +1114,8 @@ class DatabaseHelper {
     String commOrigine,
   ) async {
     final db = await database;
-    return db.update(
+    if (db == null) return 0;
+    return db!.update(
       'membres',
       {
         'district_id': nuevoDistrictId,
@@ -1092,6 +1130,7 @@ class DatabaseHelper {
 
   Future<Map<String, int>> getStatsRetraite({String? entiteId}) async {
     final db = await database;
+    if (db == null) return {'total': 0, 'proches_retraite': 0, 'deja_retraites': 0};
     final now = DateTime.now();
     final retraiteLimit = DateTime(now.year - 65, now.month, now.day);
     final dateStr = retraiteLimit.toIso8601String().split('T').first;
@@ -1103,14 +1142,14 @@ class DatabaseHelper {
       args.add(entiteId);
     }
 
-    final proches = await db.rawQuery(
+    final proches = await db!.rawQuery(
       'SELECT COUNT(*) as cnt FROM membres WHERE $where AND date_naissance >= ?',
       [...args, dateStr],
     );
-    final retraites = await db.query('membres',
+    final retraites = await db!.query('membres',
       where: 'statut_retraite = ?', whereArgs: [1]);
 
-    final total = Sqflite.firstIntValue(await db.rawQuery(
+    final total = Sqflite.firstIntValue(await db!.rawQuery(
       'SELECT COUNT(*) FROM membres WHERE $where', args)) ?? 0;
 
     return {
@@ -1122,6 +1161,7 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getMembresProchesRetraite({String? entiteId}) async {
     final db = await database;
+    if (db == null) return [];
     final now = DateTime.now();
     final retraiteLimit = DateTime(now.year - 65, now.month, now.day);
     final dateStr = retraiteLimit.toIso8601String().split('T').first;
@@ -1132,7 +1172,7 @@ class DatabaseHelper {
       where += ' AND communaute_id = ?';
       args.add(entiteId);
     }
-    return db.query('membres', where: where, whereArgs: args, orderBy: 'date_naissance ASC');
+    return db!.query('membres', where: where, whereArgs: args, orderBy: 'date_naissance ASC');
   }
 
   Future<List<Map<String, dynamic>>> getBibliotheque({
@@ -1141,6 +1181,7 @@ class DatabaseHelper {
     String? niveau,
   }) async {
     final db = await database;
+    if (db == null) return [];
     String where = '1=1';
     final args = <dynamic>[];
     if (entiteId != null && entiteId.isNotEmpty) {
@@ -1155,20 +1196,22 @@ class DatabaseHelper {
       where += ' AND niveau = ?';
       args.add(niveau);
     }
-    return db.query('bibliotheque', where: where, whereArgs: args, orderBy: 'date_ajout DESC');
+    return db!.query('bibliotheque', where: where, whereArgs: args, orderBy: 'date_ajout DESC');
   }
 
   Future<int> insertDocument(Map<String, dynamic> row) async {
     final db = await database;
+    if (db == null) return 0;
     final data = Map<String, dynamic>.from(row);
     data.putIfAbsent('date_ajout', () => DateTime.now().toIso8601String());
     data.putIfAbsent('type_document', () => 'Document');
     data.putIfAbsent('niveau', () => 'communaute');
-    return db.insert('bibliotheque', data);
+    return db!.insert('bibliotheque', data);
   }
 
   Future<int> deleteDocument(int id) async {
     final db = await database;
-    return db.delete('bibliotheque', where: 'id = ?', whereArgs: [id]);
+    if (db == null) return 0;
+    return db!.delete('bibliotheque', where: 'id = ?', whereArgs: [id]);
   }
 }

@@ -14,9 +14,9 @@ class PDFExportService {
   static Future<String?> exportReportToPDF(ReportBase report) async {
     try {
       final pdf = pw.Document();
-      const pageTheme = pw.PageTheme(
+      final pageTheme = pw.PageTheme(
         pageFormat: PdfPageFormat.a4,
-        margin: pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(32),
       );
 
       pdf.addPage(

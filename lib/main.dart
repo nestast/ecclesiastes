@@ -15,7 +15,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await initializeDateFormatting('fr_FR', null);
-  await DatabaseHelper.instance.database;
+  try {
+    await DatabaseHelper.instance.database;
+  } catch (e) {
+    debugPrint("Erreur d'initialisation de la base de données : $e");
+  }
   await NotificationService.init();
 
   final hasSession = await SecureStorageHelper.hasSession();

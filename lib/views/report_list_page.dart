@@ -23,6 +23,13 @@ class _ReportListPageState extends State<ReportListPage> {
   Future<void> _loadReports() async {
     setState(() => _isLoading = true);
     final db = await DatabaseHelper.instance.database;
+    if (db == null) {
+      setState(() {
+        _reports = [];
+        _isLoading = false;
+      });
+      return;
+    }
     final data = await db.query('rapports', orderBy: 'date_activite DESC');
     setState(() {
       _reports = data;
@@ -33,6 +40,7 @@ class _ReportListPageState extends State<ReportListPage> {
   // Action de validation (Statut 1 -> 3)
   Future<void> _validateReport(String id) async {
     final db = await DatabaseHelper.instance.database;
+    if (db == null) return;
     await db.update(
       'rapports', 
       {'statut': 3}, 
